@@ -1,0 +1,13 @@
+{
+  "name": "dyc-stress-relief-game",
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "generate": "node generate-images.js"
+  },
+  "dependencies": {
+    "@google/generative-ai": "^0.21.0",
+    "dotenv": "^16.4.5",
+    "sharp": "^0.33.0"
+  }
+}

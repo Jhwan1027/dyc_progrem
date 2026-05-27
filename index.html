@@ -1,0 +1,639 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
+<title>건양대학교 스트레스 해소 프로그램</title>
+<style>
+* { margin:0; padding:0; box-sizing:border-box; outline:none; border:none; -webkit-tap-highlight-color:transparent; }
+
+body {
+  background:#0a0a14;
+  display:flex;
+  justify-content:center;
+  align-items:center;
+  width:100vw;
+  height:100dvh;
+  overflow:hidden;
+  font-family:'Apple SD Gothic Neo','맑은 고딕','Noto Sans KR',sans-serif;
+  touch-action:manipulation;
+}
+
+/* ── 게임 캔버스 ── */
+#game {
+  position:relative;
+  width:1280px;
+  height:720px;
+  overflow:hidden;
+  transform-origin:center center;
+  flex-shrink:0;
+  transform:translateZ(0);
+}
+
+/* ── 씬 ── */
+.scene {
+  position:absolute;
+  inset:0;
+  opacity:0;
+  pointer-events:none;
+  transition:opacity 0.5s ease;
+}
+.scene.active {
+  opacity:1;
+  pointer-events:all;
+}
+
+.scene-bg {
+  display:block;
+  position:absolute;
+  inset:0;
+  width:100%;
+  height:100%;
+  object-fit:cover;
+}
+/* ── 캐릭터 ── */
+.character {
+  position:absolute;
+  transform:translateX(-50%);
+  object-fit:contain;
+  z-index:10;
+  pointer-events:none;
+  filter:drop-shadow(0 8px 20px rgba(0,0,0,0.35));
+}
+.scene.entrance .character { display:none; }
+
+/* entrance 상태: 외부 표시, 내부 숨김 */
+.scene-bg-int { display:none; }
+/* 입장 후: 외부 숨김, 내부 표시 */
+.scene:not(.entrance) .scene-bg-ext { display:none; }
+.scene:not(.entrance) .scene-bg-int { display:block; object-fit:cover; object-position:center 60%; }
+
+/* ── 하단 다크 바 (역전재판 스타일) ── */
+#bottom-bar {
+  position:absolute;
+  bottom:0; left:0; right:0;
+  height:130px;
+  background:linear-gradient(180deg, rgba(8,12,30,0.93) 0%, rgba(4,6,18,0.98) 100%);
+  border-top:2px solid rgba(80,130,220,0.35);
+  z-index:200;
+  padding:12px 70px 16px 24px;
+  display:flex;
+  flex-direction:column;
+  gap:6px;
+}
+
+#bar-location {
+  font-size:12px;
+  font-weight:700;
+  letter-spacing:2px;
+  color:#6ecf38;
+  text-transform:uppercase;
+}
+
+#bar-divider {
+  width:100%;
+  height:1px;
+  background:rgba(80,130,220,0.2);
+}
+
+#bar-text {
+  flex:1;
+  font-size:19px;
+  line-height:1.65;
+  color:#f0f0f0;
+  white-space:pre-line;
+}
+
+#bar-arrow {
+  position:absolute;
+  right:22px;
+  bottom:20px;
+  font-size:26px;
+  color:#f5c518;
+  background:none;
+  border:none;
+  cursor:pointer;
+  display:none;
+}
+#bar-arrow.visible { display:block; }
+
+@keyframes blink {
+  0%,100%{ opacity:1; }
+  50%    { opacity:0; }
+}
+
+/* ── 전체화면 버튼 ── */
+#fullscreen-btn {
+  position:fixed;
+  top:14px; right:14px;
+  z-index:9999;
+  background:rgba(8,12,30,0.78);
+  border:1px solid rgba(80,130,220,0.4);
+  color:#aac8ff;
+  font-size:18px;
+  padding:6px 12px;
+  border-radius:6px;
+  cursor:pointer;
+  transition:background 0.15s;
+}
+#fullscreen-btn:hover { background:rgba(30,50,100,0.85); }
+
+/* ── 뒤로 가기 ── */
+#back-btn {
+  position:absolute;
+  top:18px; left:18px;
+  z-index:300;
+  background:rgba(8,12,30,0.78);
+  border:1px solid rgba(80,130,220,0.4);
+  color:#aac8ff;
+  font-size:14px;
+  font-weight:600;
+  padding:8px 16px;
+  border-radius:6px;
+  cursor:pointer;
+  letter-spacing:1px;
+  display:none;
+  transition:background 0.15s;
+}
+#back-btn:hover { background:rgba(30,50,100,0.85); }
+#back-btn.visible { display:block; }
+
+/* ── 오브젝트 ── */
+.obj {
+  position:absolute;
+  transform:translateX(-50%);
+  cursor:pointer;
+  transition:filter 0.2s, transform 0.2s;
+  user-select:none;
+}
+.obj img {
+  display:block;
+  object-fit:contain;
+  filter:drop-shadow(0 6px 16px rgba(0,0,0,0.5));
+}
+.obj:hover {
+  transform:translateX(-50%) scale(1.1) translateY(-6px);
+}
+.obj:hover img {
+  filter:drop-shadow(0 0 18px rgba(255,230,100,0.7)) drop-shadow(0 6px 16px rgba(0,0,0,0.4));
+}
+.obj-hint {
+  display:none;
+  position:absolute;
+  bottom:calc(100% + 6px);
+  left:50%;
+  transform:translateX(-50%);
+  background:rgba(245,197,24,0.92);
+  color:#1a1a00;
+  font-size:11px;
+  font-weight:700;
+  padding:3px 10px;
+  border-radius:10px;
+  white-space:nowrap;
+  pointer-events:none;
+}
+.obj:hover .obj-hint { display:block; }
+
+/* 비클릭 (상영표) */
+.obj-static {
+  position:absolute;
+  transform:translateX(-50%);
+  pointer-events:none;
+}
+.obj-static img {
+  display:block;
+  object-fit:contain;
+  filter:drop-shadow(0 4px 12px rgba(0,0,0,0.4));
+}
+
+/* ── 상영표 텍스트 오버레이 ── */
+#schedule-overlay {
+  position:absolute;
+  pointer-events:none;
+  z-index:10;
+  display:flex;
+  flex-direction:column;
+  gap:4px;
+}
+.sch-row {
+  background:rgba(15,20,50,0.85);
+  border:1px solid rgba(80,130,220,0.4);
+  border-radius:6px;
+  padding:5px 10px;
+  white-space:nowrap;
+}
+.sch-title { font-size:13px; font-weight:700; color:#f5c518; }
+.sch-time  { font-size:11px; color:#aac8ff; }
+
+/* ── 캠퍼스 맵 핫스팟 ── */
+.hotspot {
+  position:absolute;
+  transform:translate(-50%,-50%);
+  cursor:pointer;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  gap:5px;
+  z-index:10;
+}
+.hotspot-dot {
+  width:22px; height:22px;
+  border-radius:50%;
+  background:#f5c518;
+  box-shadow:0 0 0 0 rgba(245,197,24,0.7);
+  animation:ping 1.8s ease-out infinite;
+}
+@keyframes ping {
+  0%   { box-shadow:0 0 0 0 rgba(245,197,24,0.7); }
+  70%  { box-shadow:0 0 0 18px rgba(245,197,24,0); }
+  100% { box-shadow:0 0 0 0 rgba(245,197,24,0); }
+}
+.hotspot-label {
+  background:rgba(8,12,30,0.82);
+  color:#f0f0f0;
+  font-size:12px;
+  font-weight:700;
+  padding:3px 10px;
+  border-radius:10px;
+  white-space:nowrap;
+  border:1px solid rgba(80,130,220,0.3);
+}
+.hotspot:hover .hotspot-dot { background:#fff; transform:scale(1.3); }
+.hotspot:hover .hotspot-label { color:#f5c518; }
+
+/* ── 캠퍼스 맵 하단 힌트 ── */
+#campus-hint {
+  position:absolute;
+  top:50%;left:50%;
+  transform:translate(-50%,-50%);
+  pointer-events:none;
+}
+#campus-bar-text {
+  animation:float 2.5s ease-in-out infinite;
+}
+@keyframes float {
+  0%,100%{ transform:translateY(0); }
+  50%    { transform:translateY(-5px); }
+}
+
+/* ── 입장 오버레이 ── */
+.entrance-overlay {
+  display:none;
+  position:absolute;
+  inset:0;
+  bottom:130px;
+  background:rgba(0,0,0,0.38);
+  z-index:50;
+  align-items:center;
+  justify-content:center;
+  cursor:pointer;
+}
+.scene.entrance .entrance-overlay { display:flex; }
+.scene.entrance .obj,
+.scene.entrance .obj-static,
+.scene.entrance #schedule-overlay { display:none; pointer-events:none; }
+
+.entrance-text {
+  background:rgba(8,12,30,0.88);
+  border:2px solid rgba(245,197,24,0.65);
+  border-radius:12px;
+  padding:18px 40px;
+  color:#f5c518;
+  font-size:20px;
+  font-weight:700;
+  letter-spacing:3px;
+  animation:float 2s ease-in-out infinite;
+  pointer-events:none;
+}
+
+/* ── 인트로 화면 ── */
+#scene-intro {
+  background:#0a0a14;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  justify-content:center;
+  gap:32px;
+  z-index:500;
+}
+.intro-overlay {
+  position:absolute;
+  inset:0;
+  background:rgba(4,6,18,0.55);
+}
+.intro-content {
+  position:relative;
+  z-index:1;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  gap:28px;
+  animation:fadeInUp 1s ease both;
+}
+@keyframes fadeInUp {
+  from { opacity:0; transform:translateY(30px); }
+  to   { opacity:1; transform:translateY(0); }
+}
+.intro-subtitle {
+  font-size:14px;
+  letter-spacing:4px;
+  color:#6ecf38;
+  font-weight:700;
+  text-transform:uppercase;
+}
+.intro-title {
+  font-size:36px;
+  font-weight:800;
+  color:#f0f0f0;
+  text-align:center;
+  line-height:1.5;
+  letter-spacing:2px;
+}
+.intro-btn {
+  margin-top:12px;
+  padding:14px 48px;
+  background:rgba(245,197,24,0.15);
+  border:2px solid rgba(245,197,24,0.7);
+  border-radius:40px;
+  color:#f5c518;
+  font-size:18px;
+  font-weight:700;
+  letter-spacing:3px;
+  cursor:pointer;
+  transition:background 0.2s, transform 0.2s;
+  animation:float 2.2s ease-in-out infinite;
+}
+.intro-btn:hover {
+  background:rgba(245,197,24,0.3);
+  transform:scale(1.05);
+}
+
+/* ── 핫스팟 방문 표시 ── */
+.hotspot.visited .hotspot-dot { background:#6ecf38; box-shadow:0 0 0 0 rgba(110,207,56,0.7); }
+.hotspot.visited .hotspot-label { color:#6ecf38; }
+@keyframes ping-visited {
+  0%   { box-shadow:0 0 0 0 rgba(110,207,56,0.7); }
+  70%  { box-shadow:0 0 0 18px rgba(110,207,56,0); }
+  100% { box-shadow:0 0 0 0 rgba(110,207,56,0); }
+}
+.hotspot.visited .hotspot-dot { animation:ping-visited 1.8s ease-out infinite; }
+
+/* ── 씬별 fallback 배경 ── */
+#scene-campus      { background:#1a2233; }
+#scene-engineering { background:#1a2b25; }
+#scene-humanities  { background:#251a33; }
+#scene-fountain    { background:#1a2530; }
+#scene-hall        { background:#2e1f1a; }
+
+#scene-campus .scene-bg,
+#scene-intro .scene-bg {
+  top: -14px;
+  height: calc(100% + 14px);
+}
+
+/* ── 세로 방향 안내 (폰 전용) ── */
+#rotate-hint {
+  display:none;
+  position:fixed;
+  inset:0;
+  background:#0a0a14;
+  z-index:10000;
+  flex-direction:column;
+  align-items:center;
+  justify-content:center;
+  gap:20px;
+  font-family:'Apple SD Gothic Neo','맑은 고딕','Noto Sans KR',sans-serif;
+  text-align:center;
+  padding:32px;
+}
+#rotate-hint .rotate-icon {
+  font-size:56px;
+  color:#f5c518;
+  animation:rotate-anim 2.5s ease-in-out infinite;
+}
+@keyframes rotate-anim {
+  0%,40%  { transform:rotate(0deg); }
+  60%,100%{ transform:rotate(90deg); }
+}
+#rotate-hint strong {
+  font-size:18px;
+  color:#f0f0f0;
+  letter-spacing:1px;
+}
+#rotate-hint p {
+  font-size:14px;
+  color:#aac8ff;
+  line-height:1.7;
+}
+@media (orientation:portrait) and (max-width:740px) {
+  #rotate-hint { display:flex; }
+}
+</style>
+</head>
+<body>
+<div id="game">
+
+<!-- ══ 씬 0: 인트로 ══ -->
+<div class="scene active" id="scene-intro">
+  <img class="scene-bg" src="images/scenes/campus.jpg" alt="" onerror="this.style.display='none'" />
+  <div class="intro-overlay"></div>
+  <div class="intro-content">
+    <div class="intro-subtitle">건양대학교 글로컬캠퍼스</div>
+    <div class="intro-title">스트레스 해소<br>프로그램</div>
+    <button class="intro-btn" onclick="goToScene('campus')">프로그램 알아보기 ▶</button>
+  </div>
+</div>
+
+<!-- ══ 씬 1: 캠퍼스 맵 ══ -->
+<div class="scene" id="scene-campus">
+  <img class="scene-bg" src="images/scenes/campus.jpg" alt="" onerror="this.style.display='none'" />
+
+  <!-- 핫스팟 위치: 3D 맵 기준 -->
+  <div class="hotspot" style="left:88%;top:68%;" onclick="goToScene('engineering')">
+    <div class="hotspot-dot"></div>
+    <div class="hotspot-label">의공학관</div>
+  </div>
+  <div class="hotspot" style="left:25%;top:63%;" onclick="goToScene('humanities')">
+    <div class="hotspot-dot"></div>
+    <div class="hotspot-label">인문학관</div>
+  </div>
+  <div class="hotspot" style="left:58%;top:76%;" onclick="goToScene('fountain')">
+    <div class="hotspot-dot"></div>
+    <div class="hotspot-label">분수대</div>
+  </div>
+  <div class="hotspot" style="left:63%;top:66%;" onclick="goToScene('hall')">
+    <div class="hotspot-dot"></div>
+    <div class="hotspot-label">건양회관</div>
+  </div>
+</div>
+
+<!-- ══ 씬 2: 의공학관 ══ -->
+<div class="scene entrance" id="scene-engineering">
+  <img class="scene-bg scene-bg-ext" src="images/scenes/engineering.jpg" alt="" onerror="this.style.display='none'" />
+  <img class="scene-bg scene-bg-int" src="images/scenes/engineering_interior.png" alt="" onerror="this.style.display='none'" />
+  <div class="entrance-overlay" onclick="enterScene()">
+    <div class="entrance-text">클릭하여 입장하세요 ▶</div>
+  </div>
+</div>
+
+<!-- ══ 씬 3: 인문학관 ══ -->
+<div class="scene entrance" id="scene-humanities">
+  <img class="scene-bg scene-bg-ext" src="images/scenes/humanities.jpg" alt="" onerror="this.style.display='none'" />
+  <img class="scene-bg scene-bg-int" src="images/scenes/humanities_interior.png" alt="" onerror="this.style.display='none'" />
+  <div class="entrance-overlay" onclick="enterScene()">
+    <div class="entrance-text">클릭하여 입장하세요 ▶</div>
+  </div>
+</div>
+
+<!-- ══ 씬 4: 분수대 ══ -->
+<div class="scene entrance" id="scene-fountain">
+  <img class="scene-bg scene-bg-ext" src="images/scenes/fountain.jpg" alt="" onerror="this.style.display='none'" />
+  <img class="scene-bg scene-bg-int" src="images/scenes/fountain_interior.png" alt="" onerror="this.style.display='none'" />
+  <div class="entrance-overlay" onclick="enterScene()">
+    <div class="entrance-text">클릭하여 입장하세요 ▶</div>
+  </div>
+</div>
+
+<!-- ══ 씬 5: 건양회관 ══ -->
+<div class="scene entrance" id="scene-hall">
+  <img class="scene-bg scene-bg-ext" src="images/scenes/hall.jpg" alt="" onerror="this.style.display='none'" />
+  <img class="scene-bg scene-bg-int" src="images/scenes/hall_interior.png" alt="" onerror="this.style.display='none'" />
+  <div class="entrance-overlay" onclick="enterScene()">
+    <div class="entrance-text">클릭하여 입장하세요 ▶</div>
+  </div>
+</div>
+
+<!-- ══ 공유 UI ══ -->
+<button id="back-btn" onclick="goToScene('campus')">◀  지도로 돌아가기</button>
+
+<div id="bottom-bar" onclick="advanceDialog()">
+  <div id="bar-location">건양대학교 글로컬캠퍼스</div>
+  <div id="bar-divider"></div>
+  <div id="bar-text">각 장소를 클릭해 프로그램을 만나보세요.</div>
+  <button id="bar-arrow">▶▶</button>
+</div>
+
+</div><!-- #game -->
+<button id="fullscreen-btn" onclick="toggleFullscreen()" title="전체화면">⛶</button>
+
+<div id="rotate-hint">
+  <div class="rotate-icon">↻</div>
+  <strong>가로 방향으로 돌려주세요</strong>
+  <p>가로 모드에서 더 잘 보여요!</p>
+</div>
+
+<script>
+const LOCATIONS = {
+  campus:      '건양대학교 글로컬캠퍼스',
+  engineering: '의공학관  —  스트레스 해소 체험관',
+  humanities:  '인문학관  —  힐링 만들기 공방',
+  fountain:    '분수대  —  조용한 쉼터',
+  hall:        '건양회관  —  건양 미니 극장',
+};
+const DIALOGUES = {
+  campus:      ['각 장소를 클릭해 프로그램을 만나보세요.'],
+  engineering: ['의공학관에 있는 스트레스 해소 체험관이에요!', '글로벌의료뷰티학과 학생분들은 다 쓴 통가발을 가져오면 간식으로 교환해드려요.', '마네킹에 마음껏 낙서하고, 가위로 시원하게 잘라보세요.', '스트레스가 쌓였다면 이곳에서 한 번 풀어보세요!'],
+  humanities:  ['힐링 만들기 공방에 오신 걸 환영해요!', '말랑이, 키캡, 왁뿌볼 등을 직접 만들어 봐요.', '2주마다 프로그램이 바뀌니 일정표를 확인해주세요.', '내 손으로 만든 굿즈, 만들면서 스트레스를 해소해 보아요!'],
+  fountain:    ['캠퍼스 속 조용한 쉼터, 분수대로 오세요.', '돗자리를 펴고 분수 소리를 들으며 쉬어가세요.', '명상도 좋고, 그냥 멍하니 하늘을 바라봐도 좋아요.', '아무것도 하지 않아도 괜찮은 나만의 시간을 가져보세요.'],
+  hall:        ['건양 미니 극장에서 영화 한 편 어떠세요?', '매주 화요일과 목요일 오후 7시에 상영해요.', '매달 상영 영화가 바뀌니 상영 일정을 확인해주세요.', '팝콘과 함께 편하게 즐겨보세요!'],
+};
+
+let current = 'intro';
+let diagIdx = 0;
+const visited = new Set();
+
+function goToScene(id) {
+  const prevScene = document.getElementById('scene-' + current);
+  prevScene.classList.remove('active');
+  if (current !== 'campus' && current !== 'intro') {
+    const _prev = prevScene;
+    setTimeout(() => _prev.classList.add('entrance'), 500);
+  }
+
+  const nextScene = document.getElementById('scene-' + id);
+  nextScene.classList.add('active');
+  current = id;
+  diagIdx = 0;
+
+  document.getElementById('bar-location').textContent = LOCATIONS[id] || '';
+  document.getElementById('bar-text').textContent =
+    id === 'campus' ? DIALOGUES.campus[0] :
+    id === 'intro'  ? '' : '건물을 클릭하여 입장하세요.';
+  document.getElementById('bar-arrow').classList.remove('visible');
+
+  const backBtn = document.getElementById('back-btn');
+  (id === 'campus' || id === 'intro') ? backBtn.classList.remove('visible') : backBtn.classList.add('visible');
+
+  if (id === 'campus') updateHotspots();
+}
+
+function enterScene() {
+  document.getElementById('scene-' + current).classList.remove('entrance');
+  visited.add(current);
+  diagIdx = 0;
+  showLine();
+}
+
+function showLine() {
+  const lines = DIALOGUES[current];
+  if (!lines) return;
+  document.getElementById('bar-text').textContent = lines[diagIdx];
+  const arrow = document.getElementById('bar-arrow');
+  diagIdx < lines.length - 1 ? arrow.classList.add('visible') : arrow.classList.remove('visible');
+}
+
+function advanceDialog() {
+  const lines = DIALOGUES[current];
+  if (!lines || diagIdx >= lines.length - 1) return;
+  diagIdx++;
+  showLine();
+}
+
+function updateHotspots() {
+  document.querySelectorAll('#scene-campus .hotspot').forEach(el => {
+    const sceneId = el.getAttribute('onclick').match(/'(\w+)'/)[1];
+    if (visited.has(sceneId)) {
+      el.classList.add('visited');
+      const label = el.querySelector('.hotspot-label');
+      if (!label.textContent.startsWith('✓')) label.textContent = '✓ ' + label.textContent;
+    }
+  });
+}
+
+document.addEventListener('keydown', e => { if (e.key === 'Escape') advanceDialog(); });
+
+document.getElementById('game').addEventListener('click', e => {
+  if (current === 'campus' || current === 'intro') return;
+  const scene = document.getElementById('scene-' + current);
+  if (scene.classList.contains('entrance')) return;
+  if (e.target.closest('.entrance-overlay, #back-btn, #bottom-bar')) return;
+  const lines = DIALOGUES[current];
+  if (lines && diagIdx >= lines.length - 1) goToScene('campus');
+});
+
+// 뷰포트에 맞게 게임 스케일 조정
+function resizeGame() {
+  const scale = Math.min(
+    window.innerWidth  / 1280,
+    window.innerHeight / 720
+  );
+  document.getElementById('game').style.transform = `scale(${scale})`;
+}
+window.addEventListener('resize', resizeGame);
+window.addEventListener('orientationchange', () => setTimeout(resizeGame, 150));
+resizeGame();
+
+function toggleFullscreen() {
+  if (!document.fullscreenElement) {
+    document.documentElement.requestFullscreen();
+  } else {
+    document.exitFullscreen();
+  }
+}
+document.addEventListener('fullscreenchange', () => {
+  document.getElementById('fullscreen-btn').textContent =
+    document.fullscreenElement ? '✕' : '⛶';
+});
+</script>
+</body>
+</html>

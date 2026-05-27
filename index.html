@@ -428,6 +428,95 @@ body {
 @media (orientation:portrait) and (max-width:740px) {
   #rotate-hint { display:flex; }
 }
+
+/* ── 정보 패널 ── */
+#info-panel {
+  position:absolute;
+  top:60px;
+  left:50%;
+  transform:translateX(-50%) translateY(-12px);
+  width:820px;
+  max-height:530px;
+  overflow-y:auto;
+  background:rgba(6,10,26,0.94);
+  border:1px solid rgba(80,130,220,0.45);
+  border-radius:12px;
+  padding:22px 26px;
+  z-index:150;
+  opacity:0;
+  pointer-events:none;
+  transition:opacity 0.4s ease, transform 0.4s ease;
+  display:flex;
+  flex-direction:column;
+  gap:13px;
+}
+#info-panel.visible {
+  opacity:1;
+  transform:translateX(-50%) translateY(0);
+  pointer-events:all;
+}
+#info-panel::-webkit-scrollbar { width:4px; }
+#info-panel::-webkit-scrollbar-track { background:transparent; }
+#info-panel::-webkit-scrollbar-thumb { background:rgba(80,130,220,0.4); border-radius:2px; }
+.ip-label {
+  font-size:11px;
+  font-weight:700;
+  letter-spacing:2px;
+  color:#6ecf38;
+  margin-bottom:7px;
+}
+.ip-desc {
+  font-size:15px;
+  line-height:1.75;
+  color:#c8d8f0;
+}
+.ip-divider {
+  height:1px;
+  background:rgba(80,130,220,0.2);
+}
+.ip-ops {
+  list-style:none;
+  display:flex;
+  flex-direction:column;
+  gap:6px;
+}
+.ip-ops li {
+  font-size:14px;
+  line-height:1.65;
+  color:#c8d8f0;
+  padding-left:14px;
+  position:relative;
+}
+.ip-ops li::before {
+  content:'•';
+  position:absolute;
+  left:0;
+  color:#aac8ff;
+}
+.ip-rows {
+  display:flex;
+  flex-direction:column;
+  gap:8px;
+}
+.ip-row {
+  display:flex;
+  align-items:baseline;
+  gap:12px;
+}
+.ip-row-label {
+  font-size:11px;
+  font-weight:700;
+  color:#f5c518;
+  letter-spacing:1px;
+  white-space:nowrap;
+  flex-shrink:0;
+  min-width:68px;
+}
+.ip-row-value {
+  font-size:14px;
+  line-height:1.65;
+  color:#e0e8f8;
+}
 </style>
 </head>
 <body>
@@ -503,6 +592,34 @@ body {
   </div>
 </div>
 
+<!-- ══ 정보 패널 ══ -->
+<div id="info-panel">
+  <div>
+    <div class="ip-label">프로그램 소개</div>
+    <div class="ip-desc" id="ip-desc"></div>
+  </div>
+  <div class="ip-divider"></div>
+  <div>
+    <div class="ip-label">운영 방식</div>
+    <ul class="ip-ops" id="ip-ops"></ul>
+  </div>
+  <div class="ip-divider"></div>
+  <div class="ip-rows">
+    <div class="ip-row">
+      <span class="ip-row-label">운영 시간</span>
+      <span class="ip-row-value" id="ip-time"></span>
+    </div>
+    <div class="ip-row">
+      <span class="ip-row-label">장소</span>
+      <span class="ip-row-value" id="ip-place"></span>
+    </div>
+    <div class="ip-row">
+      <span class="ip-row-label">참여 방법</span>
+      <span class="ip-row-value" id="ip-how"></span>
+    </div>
+  </div>
+</div>
+
 <!-- ══ 공유 UI ══ -->
 <button id="back-btn" onclick="goToScene('campus')">◀  지도로 돌아가기</button>
 
@@ -538,9 +655,73 @@ const DIALOGUES = {
   hall:        ['건양 미니 극장에서 영화 한 편 어떠세요?', '매주 화요일과 목요일 오후 7시에 상영해요.', '매달 상영 영화가 바뀌니 상영 일정을 확인해주세요.', '팝콘과 함께 편하게 즐겨보세요!'],
 };
 
+const INFO = {
+  engineering: {
+    desc: '사용이 끝난 마네킹·통가발을 활용해 낙서, 머리 밀기, 때리기 등의 활동으로 스트레스를 자유롭게 해소할 수 있는 체험형 프로그램',
+    ops: [
+      '글의뷰에서 다 쓰고 남은 마네킹을 간식과 교환하여 수거',
+      '수거한 마네킹을 활용해 낙서, 머리 밀기, 때리기 체험 등을 진행',
+      '다른 학과 학생들도 불용 물품을 가져오면 간식과 교환 후 재료로 활용',
+    ],
+    time:  '행사 기간 중 상시 운영',
+    place: '의공학관 내',
+    how:   '폐기 물품 지참 → 간식 교환 → 체험 참여',
+  },
+  humanities: {
+    desc: '말랑이, 레진 키캡, 왁뿌볼 등 유행하는 만들기 활동에 참여하며 스트레스를 해소하고 창의성을 표현할 수 있는 체험형 프로그램',
+    ops: [
+      '2주마다 프로그램을 운영하는 방식으로 진행',
+      '저렴한 재료와 재사용 가능한 재료를 적극 활용',
+      '학생회 및 학과 지원을 통해 재료비 일부를 지원받음',
+      'SNS 홍보 및 친구 추천 이벤트를 통해 참여 학생을 확대',
+    ],
+    time:  '2주마다 운영',
+    place: '인문학관 내',
+    how:   '현장 자유 참여',
+  },
+  fountain: {
+    desc: '분수대 주변에서 물멍·명상·휴식을 취하며 바쁜 학교생활 속 잠시 마음을 쉬어갈 수 있는 힐링 공간',
+    ops: [
+      '야외 공간을 기본으로 하되 날씨 상황에 따라 중지될 수 있음',
+      '개인 돗자리나 휴대용 의자를 허용해 혼자서도 편하게 참여 가능',
+    ],
+    time:  '상시 운영 (날씨에 따라 변동)',
+    place: '분수대 주변 공간',
+    how:   '자유 이용 (돗자리·휴대용 의자 지참 가능)',
+  },
+  hall: {
+    desc: '학업 스트레스 해소와 학생 간 소통을 위해 다양한 장르의 영화를 함께 감상하는 교내 문화 프로그램',
+    ops: [
+      '시험 기간을 피해 운영',
+      '저녁 시간 또는 수업이 적은 시간대에 운영',
+      '학교 보유 빔프로젝터와 음향 장비를 우선 활용',
+      '간단한 간식 이벤트를 함께 운영해 참여율을 높임',
+      '학생 투표를 통해 상영 영화와 장르를 선정',
+    ],
+    time:  '저녁 시간대 운영 (시험 기간 제외)',
+    place: '건양회관 내',
+    how:   '현장 자유 입장',
+  },
+};
+
 let current = 'intro';
 let diagIdx = 0;
 const visited = new Set();
+
+function showInfoPanel() {
+  const info = INFO[current];
+  if (!info) return;
+  document.getElementById('ip-desc').textContent = info.desc;
+  document.getElementById('ip-ops').innerHTML = info.ops.map(op => `<li>${op}</li>`).join('');
+  document.getElementById('ip-time').textContent = info.time;
+  document.getElementById('ip-place').textContent = info.place;
+  document.getElementById('ip-how').textContent = info.how;
+  document.getElementById('info-panel').classList.add('visible');
+}
+
+function hideInfoPanel() {
+  document.getElementById('info-panel').classList.remove('visible');
+}
 
 function goToScene(id) {
   const prevScene = document.getElementById('scene-' + current);
@@ -560,6 +741,8 @@ function goToScene(id) {
     id === 'campus' ? DIALOGUES.campus[0] :
     id === 'intro'  ? '' : '건물을 클릭하여 입장하세요.';
   document.getElementById('bar-arrow').classList.remove('visible');
+
+  if (id === 'campus' || id === 'intro') hideInfoPanel();
 
   const backBtn = document.getElementById('back-btn');
   (id === 'campus' || id === 'intro') ? backBtn.classList.remove('visible') : backBtn.classList.add('visible');
@@ -587,6 +770,7 @@ function advanceDialog() {
   if (!lines || diagIdx >= lines.length - 1) return;
   diagIdx++;
   showLine();
+  if (diagIdx === 1) showInfoPanel();
 }
 
 function updateHotspots() {
@@ -606,7 +790,7 @@ document.getElementById('game').addEventListener('click', e => {
   if (current === 'campus' || current === 'intro') return;
   const scene = document.getElementById('scene-' + current);
   if (scene.classList.contains('entrance')) return;
-  if (e.target.closest('.entrance-overlay, #back-btn, #bottom-bar')) return;
+  if (e.target.closest('.entrance-overlay, #back-btn, #bottom-bar, #info-panel')) return;
   const lines = DIALOGUES[current];
   if (lines && diagIdx >= lines.length - 1) goToScene('campus');
 });

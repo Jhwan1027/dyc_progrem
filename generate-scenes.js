@@ -37,6 +37,11 @@ const SCENES = [
     prompt:
       "anime visual novel background art, ultra-wide establishing shot, full room visible, zoomed out, cozy university room converted into a mini cinema, 2 small college students sitting on floor cushions watching a large projection screen, one holding popcorn, warm dim lighting with string fairy lights, movie posters on walls, characters appear small within the wide room, soft pastel warm tones, no text",
   },
+  {
+    file: "outro.png",
+    prompt:
+      "anime visual novel background art, wide horizontal scene, warm golden hour sunset on a Korean university campus, cheerful college students gathered on green lawn near a decorative fountain, some waving hands and laughing together, soft warm pastel colors with orange and pink gradient sky, lush trees framing both sides of the scene, sunlight glowing through the leaves, peaceful uplifting celebratory mood, no text",
+  },
 ];
 
 let success = 0;

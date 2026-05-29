@@ -392,8 +392,7 @@ body {
 #scene-fountain    { background:#1a2530; }
 #scene-hall        { background:#2e1f1a; }
 
-#scene-campus .scene-bg,
-#scene-outro .scene-bg {
+#scene-campus .scene-bg {
   top: -14px;
   height: calc(100% + 14px);
 }
@@ -622,7 +621,7 @@ body {
 
 <!-- ══ 씬 6: 아웃트로 ══ -->
 <div class="scene" id="scene-outro">
-  <img class="scene-bg" src="images/scenes/campus.jpg" alt="" onerror="this.style.display='none'" />
+  <img class="scene-bg" src="images/scenes/outro.png" alt="" onerror="this.style.display='none'" />
   <div class="intro-overlay"></div>
   <div class="intro-content">
     <div class="intro-subtitle">건양대학교 글로컬캠퍼스</div>
@@ -666,7 +665,7 @@ body {
 <!-- ══ 공유 UI ══ -->
 <button id="back-btn" onclick="goToScene('campus')">◀  지도로 돌아가기</button>
 
-<div id="bottom-bar" onclick="advanceDialog()">
+<div id="bottom-bar" onclick="handleAdvance()">
   <div id="bar-location">건양대학교 글로컬캠퍼스</div>
   <div id="bar-divider"></div>
   <div id="bar-text">각 장소를 클릭해 프로그램을 만나보세요.</div>
@@ -801,7 +800,6 @@ function goToScene(id) {
 
 function enterScene() {
   document.getElementById('scene-' + current).classList.remove('entrance');
-  visited.add(current);
   diagIdx = 0;
   showLine();
 }
@@ -815,11 +813,26 @@ function showLine() {
 }
 
 function advanceDialog() {
+  const scene = document.getElementById('scene-' + current);
+  if (!scene || scene.classList.contains('entrance')) return;
   const lines = DIALOGUES[current];
   if (!lines || diagIdx >= lines.length - 1) return;
   diagIdx++;
   showLine();
   if (diagIdx === 1) showInfoPanel();
+}
+
+function handleAdvance() {
+  const scene = document.getElementById('scene-' + current);
+  if (!scene || scene.classList.contains('entrance')) return;
+  if (current === 'campus' || current === 'intro' || current === 'outro') return;
+  const lines = DIALOGUES[current];
+  if (lines && diagIdx >= lines.length - 1) {
+    visited.add(current);
+    goToScene('campus');
+  } else {
+    advanceDialog();
+  }
 }
 
 function updateHotspots() {
@@ -833,7 +846,22 @@ function updateHotspots() {
   });
 }
 
-document.addEventListener('keydown', e => { if (e.key === 'Escape') advanceDialog(); });
+document.addEventListener('keydown', e => {
+  if (['Escape','Enter',' ','ArrowRight'].includes(e.key)) {
+    e.preventDefault();
+    handleAdvance();
+  }
+});
+
+// 스와이프 (터치)
+let _touchX = null;
+document.addEventListener('touchstart', e => { _touchX = e.touches[0].clientX; }, { passive: true });
+document.addEventListener('touchend', e => {
+  if (_touchX === null) return;
+  const dx = e.changedTouches[0].clientX - _touchX;
+  _touchX = null;
+  if (dx < -40) handleAdvance(); // 왼쪽으로 스와이프
+});
 
 document.getElementById('game').addEventListener('click', e => {
   if (current === 'campus' || current === 'intro' || current === 'outro') return;
@@ -841,7 +869,10 @@ document.getElementById('game').addEventListener('click', e => {
   if (scene.classList.contains('entrance')) return;
   if (e.target.closest('.entrance-overlay, #back-btn, #bottom-bar, #info-panel')) return;
   const lines = DIALOGUES[current];
-  if (lines && diagIdx >= lines.length - 1) goToScene('campus');
+  if (lines && diagIdx >= lines.length - 1) {
+    visited.add(current);
+    goToScene('campus');
+  }
 });
 
 // 뷰포트에 맞게 게임 스케일 조정
